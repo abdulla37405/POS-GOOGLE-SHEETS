@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Horti Club POS — Lahore · Islamabad · Rawalpindi</title>
+
+<!-- PWA: Makes it installable on Android & Desktop Chrome -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a3a2a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Horti POS">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-deep: #1a3a2a;
+    --green-mid: #2d6a4f;
+    --green-light: #52b788;
+    --green-pale: #d8f3dc;
+    --cream: #f8f4ee;
+    --cream-dark: #ede8df;
+    --earth: #8b6f47;
+    --earth-light: #c9a96e;
+    --red: #c1440e;
+    --text: #1a1a1a;
+    --text-muted: #6b6b6b;
+    --white: #ffffff;
+    --shadow: 0 4px 24px rgba(26,58,42,0.12);
+    --shadow-lg: 0 8px 40px rgba(26,58,42,0.18);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* SETUP SCREEN */
+  .setup-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px; background: var(--green-deep);
+  }
+  .setup-card {
+    background: var(--white); border-radius: 20px; padding: 36px 32px;
+    width: 100%; max-width: 460px; box-shadow: var(--shadow-lg);
+  }
+  .setup-logo { font-size: 40px; text-align: center; margin-bottom: 10px; }
+  .setup-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; text-align: center; color: var(--green-deep); margin-bottom: 4px; }
+  .setup-sub { text-align: center; color: var(--text-muted); font-size: 0.88rem; margin-bottom: 28px; }
+  .setup-label { font-size: 0.82rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; display: block; }
+  .setup-input {
+    width: 100%; padding: 13px 16px;
+    border: 2px solid var(--cream-dark); border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem;
+    outline: none; transition: border-color .2s; margin-bottom: 6px;
+  }
+  .setup-input:focus { border-color: var(--green-light); }
+  .setup-hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+  .setup-hint code { background: var(--cream); padding: 2px 5px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.8rem; }
+  .setup-btn {
+    width: 100%; padding: 14px;
+    background: var(--green-mid); color: var(--white);
+    border: none; border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700;
+    cursor: pointer; transition: background .2s; margin-bottom: 12px;
+  }
+  .setup-btn:hover { background: var(--green-deep); }
+  .setup-btn:disabled { background: #ccc; cursor: not-allowed; }
+  .setup-steps { background: var(--cream); border-radius: var(--radius-sm); padding: 16px; margin-top: 16px; }
+  .setup-steps h4 { font-size: 0.85rem; font-weight: 700; color: var(--green-deep); margin-bottom: 10px; }
+  .step-item { display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.82rem; line-height: 1.4; }
+  .step-num { width: 20px; height: 20px; background: var(--green-mid); color: var(--white); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+
+  /* LOADING */
+  .loading-screen {
+    display: none; position: fixed; inset: 0;
+    background: var(--green-deep); z-index: 999;
+    flex-direction: column; align-items: center; justify-content: center;
+    color: var(--white); gap: 16px;
+  }
+  .loading-screen.show { display: flex; }
+  .spinner {
+    width: 44px; height: 44px; border: 3px solid rgba(255,255,255,.2);
+    border-top-color: var(--green-light); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 1rem; opacity: .8; }
+
+  /* MAIN APP */
+  .app-screen { display: none; }
+  .app-screen.show { display: block; }
+
+  /* HEADER */
+  .header {
+    background: var(--green-deep); color: var(--white);
+    padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
+  }
+  .header-brand { display: flex; align-items: center; gap: 10px; }
+  .header-logo { width: 38px; height: 38px; background: var(--green-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .header-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; }
+  .header-sub { font-size: 0.72rem; color: var(--green-light); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .sync-status { font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; background: rgba(255,255,255,.1); }
+  .sync-status.synced { color: #74c69d; }
+  .sync-status.syncing { color: var(--earth-light); }
+  .sync-status.error { color: #ff8080; }
+  .header-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.08); border-radius: 10px; padding: 4px; }
+  .tab-btn { background: none; border: none; color: rgba(255,255,255,.6); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; padding: 6px 14px; border-radius: 7px; cursor: pointer; transition: all .2s; }
+  .tab-btn.active { background: var(--white); color: var(--green-deep); }
+
+  /* POS LAYOUT */
+  .pos-layout { display: grid; grid-template-columns: 1fr 340px; height: calc(100vh - 66px); }
+  .pos-left { overflow-y: auto; padding: 16px; background: var(--cream); }
+  .search-bar { position: sticky; top: 0; z-index: 10; background: var(--cream); padding-bottom: 12px; }
+  .search-wrap { position: relative; }
+  .search-wrap input { width: 100%; padding: 12px 16px 12px 44px; border: 2px solid var(--cream-dark); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; background: var(--white); outline: none; transition: border-color .2s; }
+  .search-wrap input:focus { border-color: var(--green-light); }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity: .5; }
+  .results-count { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; text-align: right; }
+  .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .product-card { background: var(--white); border-radius: var(--radius); padding: 14px 12px; cursor: pointer; border: 2px solid transparent; transition: all .18s; box-shadow: 0 2px 8px rgba(0,0,0,.05); position: relative; }
+  .product-card:hover { border-color: var(--green-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .product-card:active { transform: scale(0.97); }
+  .product-card .code { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--text-muted); margin-bottom: 5px; }
+  .product-card .name { font-size: 0.83rem; font-weight: 600; line-height: 1.35; margin-bottom: 8px; min-height: 2.2em; }
+  .product-card .price { font-size: 1rem; font-weight: 700; color: var(--green-mid); font-family: 'DM Mono', monospace; }
+  .product-card .price::before { content: 'Rs '; font-size: 0.72rem; font-weight: 400; }
+  .product-card .stock-badge { position: absolute; top: 10px; right: 10px; font-size: 0.68rem; font-weight: 600; padding: 2px 6px; border-radius: 20px; background: var(--green-pale); color: var(--green-mid); }
+  .product-card .stock-badge.low { background: #fff3cd; color: #856404; }
+  .product-card .stock-badge.out { background: #fde8e8; color: var(--red); }
+  .product-card.in-bill { border-color: var(--green-mid); background: #f0faf4; }
+
+  /* BILL PANEL */
+  .bill-panel { background: var(--green-deep); color: var(--white); display: flex; flex-direction: column; height: 100%; }
+  .bill-header { padding: 16px 18px 12px; border-bottom: 1px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: space-between; }
+  .bill-header h2 { font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+  .clear-btn { background: rgba(255,255,255,.1); border: none; color: var(--white); font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+  .clear-btn:hover { background: rgba(255,255,255,.2); }
+  .bill-items { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .bill-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: .4; text-align: center; }
+  .bill-empty .icon { font-size: 40px; margin-bottom: 8px; }
+  .bill-empty p { font-size: 0.85rem; }
+  .bill-item { background: rgba(255,255,255,.07); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .bill-item-info { flex: 1; min-width: 0; }
+  .bill-item-name { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bill-item-unit { font-size: 0.72rem; color: var(--green-light); margin-top: 2px; }
+  .qty-controls { display: flex; align-items: center; gap: 6px; }
+  .qty-btn { width: 26px; height: 26px; border-radius: 50%; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; font-weight: 600; }
+  .qty-btn.minus { background: rgba(255,255,255,.15); color: var(--white); }
+  .qty-btn.minus:hover { background: var(--red); }
+  .qty-btn.plus { background: var(--green-light); color: var(--green-deep); }
+  .bill-item-total { font-family: 'DM Mono', monospace; font-size: 0.85rem; font-weight: 600; color: var(--earth-light); min-width: 64px; text-align: right; }
+  .bill-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.1); background: rgba(0,0,0,.15); }
+  .bill-line { display: flex; justify-content: space-between; font-size: 0.85rem; color: rgba(255,255,255,.7); margin-bottom: 6px; }
+  .bill-total-line { display: flex; justify-content: space-between; font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; margin: 10px 0 14px; }
+  .bill-total-line span:last-child { color: var(--earth-light); }
+  .print-btn { width: 100%; padding: 13px; background: var(--green-light); color: var(--green-deep); border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .print-btn:hover { background: #74c69d; }
+
+  /* MANAGE TAB */
+  .manage-view { padding: 20px; max-width: 900px; margin: 0 auto; }
+  .manage-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .manage-header h2 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--green-deep); }
+  .manage-actions { display: flex; gap: 8px; }
+  .add-product-btn { background: var(--green-mid); color: var(--white); border: none; border-radius: var(--radius-sm); padding: 10px 18px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .add-product-btn:hover { background: var(--green-deep); }
+  .sync-btn { background: var(--earth-light); color: var(--green-deep); border: none; border-radius: var(--radius-sm); padding: 10px 16px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all .2s; }
+  .sync-btn:hover { background: var(--earth); color: var(--white); }
+  .manage-search { position: relative; margin-bottom: 14px; }
+  .manage-search input { width: 100%; padding: 11px 16px 11px 42px; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; background: var(--white); outline: none; }
+  .manage-search input:focus { border-color: var(--green-light); }
+  .manage-search .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 16px; opacity: .5; }
+  .products-table { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .table-head { display: grid; grid-template-columns: 110px 1fr 110px 90px 100px; padding: 11px 16px; background: var(--green-deep); color: var(--white); font-size: 0.78rem; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; gap: 8px; }
+  .table-row { display: grid; grid-template-columns: 110px 1fr 110px 90px 100px; padding: 11px 16px; border-bottom: 1px solid var(--cream-dark); align-items: center; gap: 8px; transition: background .15s; }
+  .table-row:hover { background: var(--cream); }
+  .table-row:last-child { border-bottom: none; }
+  .table-row .code { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text-muted); }
+  .table-row .item-name { font-size: 0.85rem; font-weight: 500; }
+  .table-row .price-cell { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 600; color: var(--green-mid); }
+  .table-row .stock-cell { font-family: 'DM Mono', monospace; font-size: 0.85rem; }
+  .row-actions { display: flex; gap: 6px; }
+  .edit-btn, .del-btn { border: none; border-radius: 6px; padding: 5px 9px; font-size: 0.75rem; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600; transition: all .15s; }
+  .edit-btn { background: var(--green-pale); color: var(--green-mid); }
+  .edit-btn:hover { background: var(--green-light); color: var(--white); }
+  .del-btn { background: #fde8e8; color: var(--red); }
+  .del-btn:hover { background: var(--red); color: var(--white); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--white); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); animation: slideUp .2s ease; }
+  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .modal h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 20px; color: var(--green-deep); }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+  .form-group input { width: 100%; padding: 11px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none; transition: border-color .2s; }
+  .form-group input:focus { border-color: var(--green-light); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-save { flex: 1; padding: 12px; background: var(--green-mid); color: var(--white); border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+  .btn-save:hover { background: var(--green-deep); }
+  .btn-cancel { padding: 12px 18px; background: var(--cream-dark); color: var(--text); border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.95rem; cursor: pointer; }
+
+  /* RECEIPT */
+  .receipt-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+  .receipt-modal.open { display: flex; }
+  .receipt { background: var(--white); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 360px; font-family: 'DM Mono', monospace; }
+  .receipt-title { text-align: center; font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 2px; color: var(--green-deep); }
+  .receipt-sub, .receipt-date, .receipt-footer { text-align: center; font-size: 0.72rem; color: var(--text-muted); }
+  .receipt-date { margin-bottom: 16px; }
+  .receipt-divider { border: none; border-top: 1px dashed #ccc; margin: 10px 0; }
+  .receipt-items-label { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+  .receipt-item { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 5px; }
+  .receipt-item .r-name { flex: 1; }
+  .receipt-item .r-qty { width: 30px; text-align: center; }
+  .receipt-item .r-price { width: 70px; text-align: right; }
+  .receipt-total { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 700; margin-top: 8px; }
+  .receipt-footer { margin-top: 14px; }
+  .receipt-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .receipt-print-btn { flex: 1; padding: 11px; background: var(--green-mid); color: var(--white); border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+  .receipt-close-btn { padding: 11px 16px; background: var(--cream-dark); color: var(--text); border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--green-deep); color: var(--white); padding: 10px 22px; border-radius: 30px; font-size: 0.88rem; font-weight: 500; z-index: 9999; opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  /* MOBILE */
+  @media (max-width: 700px) {
+    .pos-layout { grid-template-columns: 1fr; height: auto; }
+    .bill-panel { position: fixed; bottom: 0; left: 0; right: 0; height: auto; max-height: 55vh; border-radius: 18px 18px 0 0; z-index: 50; transform: translateY(calc(100% - 62px)); transition: transform .3s ease; }
+    .bill-panel.expanded { transform: translateY(0); }
+    .bill-panel-handle { display: flex; align-items: center; justify-content: center; padding: 10px; cursor: pointer; }
+    .bill-panel-handle::before { content: ''; display: block; width: 36px; height: 4px; background: rgba(255,255,255,.3); border-radius: 2px; }
+    .pos-left { padding-bottom: 80px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .header-tabs .tab-btn { font-size: 0.75rem; padding: 6px 10px; }
+    .table-head, .table-row { grid-template-columns: 1fr 90px 70px 80px; }
+    .table-head .col-code, .table-row .code { display: none; }
+    .manage-view { padding: 14px; }
+    .sync-status { display: none; }
+  }
+
+  .mobile-bill-tab { display: none; position: fixed; bottom: 68px; left: 50%; transform: translateX(-50%); background: var(--green-mid); color: var(--white); border-radius: 30px; padding: 10px 22px; font-weight: 700; font-size: 0.9rem; box-shadow: 0 4px 20px rgba(0,0,0,.3); z-index: 49; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+  @media (max-width: 700px) { .mobile-bill-tab { display: block; } }
+  /* PWA INSTALL BANNER */
+  .pwa-install-banner {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+    background: var(--green-deep); color: var(--white);
+    padding: 14px 18px; gap: 12px; align-items: center;
+    border-top: 2px solid var(--green-light);
+    box-shadow: 0 -4px 20px rgba(0,0,0,.3);
+  }
+  .pwa-install-banner.show { display: flex; }
+  .pwa-install-text { flex: 1; }
+  .pwa-install-text strong { display: block; font-size: 0.9rem; }
+  .pwa-install-text span { font-size: 0.75rem; opacity: .7; }
+  .pwa-install-btn {
+    background: var(--green-light); color: var(--green-deep);
+    border: none; border-radius: var(--radius-sm); padding: 9px 16px;
+    font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; white-space: nowrap;
+  }
+  .pwa-dismiss-btn {
+    background: none; border: none; color: rgba(255,255,255,.5);
+    font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
+  }
+  /* DESKTOP: show install hint in header */
+  .install-hint {
+    font-size: 0.7rem; color: var(--green-light); opacity: .7;
+    margin-top: 1px; display: none;
+  }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 10px; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-card">
+    <div class="setup-logo">🌿</div>
+    <div class="setup-title">Horti Club POS</div>
+    <div class="setup-sub">Pehli baar setup karein — sirf ek baar karna hoga</div>
+
+    <label class="setup-label">Apps Script Web App URL</label>
+    <input type="text" class="setup-input" id="scriptUrl" placeholder="https://script.google.com/macros/s/...">
+    <div class="setup-hint">
+      Yeh URL aapko Step 3 mein milega jab aap Apps Script deploy karenge.<br>
+      Format: <code>https://script.google.com/macros/s/ABC.../exec</code>
+    </div>
+
+    <button class="setup-btn" onclick="saveSetup()" id="setupBtn">✅ Connect & Load Products</button>
+
+    <div class="setup-steps">
+      <h4>📋 Setup Guide (sirf ek baar)</h4>
+      <div class="step-item"><div class="step-num">1</div><div>sheets.google.com kholo → Blank Sheet banao → naam rakho <strong>Horti POS</strong></div></div>
+      <div class="step-item"><div class="step-num">2</div><div>Extensions → Apps Script → saara code delete karo → <strong>apps_script_code.js</strong> ka code paste karo → Save (Ctrl+S)</div></div>
+      <div class="step-item"><div class="step-num">3</div><div>Deploy → New Deployment → Type: <strong>Web App</strong> → Execute as: <strong>Me</strong> → Who has access: <strong>Anyone</strong> → Deploy → URL copy karo</div></div>
+      <div class="step-item"><div class="step-num">4</div><div>Woh URL upar paste karo aur Connect dabao</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Products load ho rahe hain...</div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app-screen" id="appScreen">
+  <div class="header">
+    <div class="header-brand">
+      <div class="header-logo">🌿</div>
+      <div>
+        <div class="header-title">Horti Club</div>
+        <div class="header-sub">Lahore · Islamabad · Rawalpindi · Point of Sale</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="sync-status synced" id="syncStatus">✓ Synced</div>
+      <div class="header-tabs">
+        <button class="tab-btn active" onclick="switchTab('pos',this)">🛒 Sale</button>
+        <button class="tab-btn" onclick="switchTab('manage',this)">📦 Products</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POS TAB -->
+  <div id="tab-pos" class="tab-content active">
+    <div class="pos-layout">
+      <div class="pos-left">
+        <div class="search-bar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by name or code..." oninput="renderGrid()" autocomplete="off">
+          </div>
+          <div class="results-count" id="resultsCount"></div>
+        </div>
+        <div class="product-grid" id="productGrid"></div>
+      </div>
+      <div class="bill-panel" id="billPanel">
+        <div class="bill-panel-handle" onclick="toggleBillPanel()"></div>
+        <div class="bill-header">
+          <h2>🧾 Current Bill</h2>
+          <button class="clear-btn" onclick="clearBill()">Clear All</button>
+        </div>
+        <div class="bill-items" id="billItems">
+          <div class="bill-empty" id="billEmpty">
+            <div class="icon">🌱</div>
+            <p>Tap a product to add it</p>
+          </div>
+        </div>
+        <div class="bill-footer">
+          <div class="bill-line"><span>Items</span><span id="billItemCount">0</span></div>
+          <div class="bill-line"><span>Subtotal</span><span id="billSubtotal">Rs 0</span></div>
+          <div class="bill-total-line"><span>Total</span><span id="billTotal">Rs 0</span></div>
+          <button class="print-btn" onclick="showReceipt()">🖨️ Generate Bill</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAGE TAB -->
+  <div id="tab-manage" class="tab-content">
+    <div class="manage-view">
+      <div class="manage-header">
+        <h2>📦 Product Catalogue</h2>
+        <div class="manage-actions">
+          <button class="sync-btn" onclick="loadFromSheet()">🔄 Sync Sheet</button>
+          <button class="add-product-btn" onclick="openAddModal()">+ Add Product</button>
+        </div>
+      </div>
+      <div class="manage-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="manageSearch" placeholder="Search products..." oninput="renderManageTable()">
+      </div>
+      <div class="products-table">
+        <div class="table-head">
+          <div class="col-code">Code</div>
+          <div>Item Name</div>
+          <div>Sale Price</div>
+          <div>Stock</div>
+          <div>Actions</div>
+        </div>
+        <div id="manageTableBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Product Modal -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Product</h3>
+    <div class="form-group"><label>Item Code</label><input type="text" id="editCode" placeholder="e.g. 230200682"></div>
+    <div class="form-group"><label>Item Name</label><input type="text" id="editName" placeholder="e.g. White Stone"></div>
+    <div class="form-group"><label>Sale Price (Rs)</label><input type="number" id="editPrice" placeholder="e.g. 510" min="0"></div>
+    <div class="form-group"><label>Stock Quantity</label><input type="number" id="editStock" placeholder="e.g. 9" min="0"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="receipt-modal" id="receiptModal">
+  <div class="receipt" id="receiptContent">
+    <div class="receipt-title">Horti Club</div>
+    <div class="receipt-sub">Lahore · Islamabad · Rawalpindi</div>
+    <div class="receipt-date" id="receiptDate"></div>
+    <hr class="receipt-divider">
+    <div class="receipt-items-label"><span>Item</span><span>Qty</span><span>Amount</span></div>
+    <div id="receiptItems"></div>
+    <hr class="receipt-divider">
+    <div class="receipt-total"><span>TOTAL</span><span id="receiptTotal"></span></div>
+    <div class="receipt-footer">Thank you for shopping with us! 🌿</div>
+    <div class="receipt-actions">
+      <button class="receipt-close-btn" onclick="closeReceipt()">Close</button>
+      <button class="receipt-print-btn" onclick="printReceipt()">🖨️ Print</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bill toggle -->
+<button class="mobile-bill-tab" id="mobileBillBtn" onclick="toggleBillPanel()">
+  🧾 Bill · Rs <span id="mobileBillTotal">0</span>
+</button>
+
+<!-- PWA Install Banner (shows on mobile if not installed) -->
+<div class="pwa-install-banner" id="pwaInstallBanner">
+  <div class="pwa-install-text">
+    <strong>📱 Home Screen pe Add karein</strong>
+    <span>App ki tarah kaam karega — offline bhi!</span>
+  </div>
+  <button class="pwa-install-btn" id="pwaInstallBtn">Install</button>
+  <button class="pwa-dismiss-btn" onclick="document.getElementById('pwaInstallBanner').classList.remove('show')">✕</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  PWA + DESKTOP ENHANCEMENTS
+// ══════════════════════════════════════════
+
+// 1. Register Service Worker (offline support + PWA)
+// Electron mein band hai — sirf browser/PWA ke liye
+if ('serviceWorker' in navigator && !navigator.userAgent.includes('Electron')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+} else if ('serviceWorker' in navigator) {
+  // Electron: purane service workers unregister karo
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    for (let r of regs) r.unregister();
+  });
+}
+
+// 2. PWA Install Prompt (Android Chrome shows "Add to Home Screen")
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install banner after 3 seconds
+  setTimeout(() => {
+    if (!localStorage.getItem('pwa_installed')) {
+      document.getElementById('pwaInstallBanner').classList.add('show');
+    }
+  }, 3000);
+});
+
+document.getElementById('pwaInstallBtn').addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    localStorage.setItem('pwa_installed', '1');
+    document.getElementById('pwaInstallBanner').classList.remove('show');
+    showToast('✅ App install ho gaya!');
+  }
+  deferredInstallPrompt = null;
+});
+
+window.addEventListener('appinstalled', () => {
+  localStorage.setItem('pwa_installed', '1');
+  document.getElementById('pwaInstallBanner').classList.remove('show');
+});
+
+// 3. Auto-sync every 60 seconds (keeps all devices in sync)
+let autoSyncInterval = null;
+function startAutoSync() {
+  if (autoSyncInterval) clearInterval(autoSyncInterval);
+  autoSyncInterval = setInterval(() => {
+    if (SCRIPT_URL && document.visibilityState === 'visible') {
+      loadFromSheet();
+    }
+  }, 60000);
+}
+
+// Also sync when app comes back to foreground
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && SCRIPT_URL) {
+    loadFromSheet();
+  }
+});
+
+// 4. Desktop keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    const inp = document.getElementById('searchInput');
+    if (inp) { inp.focus(); inp.select(); }
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); if(typeof clearBill!=='undefined') clearBill(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); if(typeof showReceipt!=='undefined') showReceipt(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'r') { e.preventDefault(); if(typeof loadFromSheet!=='undefined') loadFromSheet(); }
+  if (e.key === 'Escape') {
+    if(typeof closeModal!=='undefined') closeModal();
+    if(typeof closeReceipt!=='undefined') closeReceipt();
+  }
+});
+
+// ══════════════════════════════════════════
+//  MAIN APP CONFIG
+// ══════════════════════════════════════════
+let SCRIPT_URL = localStorage.getItem('horti_script_url') || '';
+let products = [];
+let bill = [];
+let editingIndex = null;
+let billExpanded = false;
+
+// ── SETUP ──
+function init() {
+  if (SCRIPT_URL) {
+    showApp();
+    loadFromSheet();
+  } else {
+    document.getElementById('setupScreen').style.display = 'flex';
+  }
+}
+
+function saveSetup() {
+  const url = document.getElementById('scriptUrl').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    showToast('❌ Sahi URL enter karein');
+    return;
+  }
+  SCRIPT_URL = url;
+  localStorage.setItem('horti_script_url', url);
+  showApp();
+  loadFromSheet(true); // first time = upload default data
+}
+
+function showApp() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appScreen').classList.add('show');
+  startAutoSync(); // Auto-sync every 60s — keeps all devices in sync
+}
+
+// ── SYNC ──
+async function loadFromSheet(isFirstTime = false) {
+  setSync('syncing', '⟳ Loading...');
+  showLoading('Products load ho rahe hain...');
+
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=getProducts');
+    const data = await res.json();
+
+    if (data.success) {
+      if (data.products.length === 0 && isFirstTime) {
+        // First time: upload all default products
+        await uploadDefaultProducts();
+      } else {
+        products = data.products;
+        saveLocal();
+        renderGrid();
+        setSync('synced', '✓ Synced');
+        showToast('✅ ' + products.length + ' products loaded');
+      }
+    } else {
+      throw new Error('Server error');
+    }
+  } catch (e) {
+    // Fallback to local
+    products = JSON.parse(localStorage.getItem('horti_products_cache') || '[]');
+    if (products.length === 0) products = DEFAULT_PRODUCTS;
+    renderGrid();
+    setSync('error', '⚠ Offline');
+    showToast('⚠ Sheet se connect nahi hua — local data use ho raha hai');
+  }
+  hideLoading();
+}
+
+async function uploadDefaultProducts() {
+  showLoading('Pehli baar data upload ho raha hai...');
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveProducts', products: DEFAULT_PRODUCTS })
+    });
+    const data = await res.json();
+    if (data.success) {
+      products = DEFAULT_PRODUCTS;
+      saveLocal();
+      renderGrid();
+      setSync('synced', '✓ Synced');
+      showToast('✅ ' + products.length + ' products Google Sheet mein save ho gaye!');
+    }
+  } catch (e) {
+    products = DEFAULT_PRODUCTS;
+    renderGrid();
+    setSync('error', '⚠ Upload failed');
+  }
+  hideLoading();
+}
+
+async function syncToSheet() {
+  setSync('syncing', '⟳ Saving...');
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveProducts', products })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setSync('synced', '✓ Synced');
+      showToast('✅ Google Sheet update ho gaya');
+    } else throw new Error();
+  } catch (e) {
+    setSync('error', '⚠ Sync failed');
+    showToast('❌ Sheet update nahi hua — internet check karein');
+  }
+}
+
+function saveLocal() {
+  localStorage.setItem('horti_products_cache', JSON.stringify(products));
+}
+
+function setSync(state, text) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status ' + state;
+  el.textContent = text;
+}
+
+// ── TABS ──
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'manage') renderManageTable();
+}
+
+// ── POS ──
+function renderGrid() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filtered = q ? products.filter(p => p.name.toLowerCase().includes(q) || p.code.includes(q)) : products;
+  document.getElementById('resultsCount').textContent = q ? `${filtered.length} of ${products.length} products` : `${products.length} products`;
+  document.getElementById('productGrid').innerHTML = filtered.map(p => {
+    const inBill = bill.find(b => b.code === p.code);
+    const sc = p.stock === 0 ? 'out' : p.stock < 5 ? 'low' : '';
+    return `<div class="product-card ${inBill ? 'in-bill' : ''}" onclick="addToBill('${p.code}')">
+      <div class="code">${p.code}</div>
+      <div class="name">${p.name}</div>
+      <div class="price">${p.price.toLocaleString()}</div>
+      <div class="stock-badge ${sc}">${p.stock === 0 ? 'Out' : p.stock}</div>
+    </div>`;
+  }).join('');
+}
+
+function addToBill(code) {
+  const product = products.find(p => p.code === code);
+  if (!product) return;
+  const ex = bill.find(b => b.code === code);
+  if (ex) ex.qty++;
+  else bill.push({ code: product.code, name: product.name, price: product.price, qty: 1 });
+  renderBill(); renderGrid();
+  if (window.innerWidth <= 700) { document.getElementById('billPanel').classList.add('expanded'); billExpanded = true; }
+}
+
+function changeQty(code, delta) {
+  const item = bill.find(b => b.code === code);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) bill = bill.filter(b => b.code !== code);
+  renderBill(); renderGrid();
+}
+
+function renderBill() {
+  const container = document.getElementById('billItems');
+  document.getElementById('billEmpty').style.display = bill.length === 0 ? 'flex' : 'none';
+  container.querySelectorAll('.bill-item').forEach(e => e.remove());
+  bill.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'bill-item';
+    div.innerHTML = `<div class="bill-item-info"><div class="bill-item-name">${item.name}</div><div class="bill-item-unit">Rs ${item.price.toLocaleString()} each</div></div>
+      <div class="qty-controls">
+        <button class="qty-btn minus" onclick="changeQty('${item.code}',-1)">−</button>
+        <div class="qty-val">${item.qty}</div>
+        <button class="qty-btn plus" onclick="changeQty('${item.code}',1)">+</button>
+      </div>
+      <div class="bill-item-total">Rs ${(item.price * item.qty).toLocaleString()}</div>`;
+    container.appendChild(div);
+  });
+  const total = bill.reduce((s, i) => s + i.price * i.qty, 0);
+  const count = bill.reduce((s, i) => s + i.qty, 0);
+  document.getElementById('billItemCount').textContent = count;
+  document.getElementById('billSubtotal').textContent = 'Rs ' + total.toLocaleString();
+  document.getElementById('billTotal').textContent = 'Rs ' + total.toLocaleString();
+  document.getElementById('mobileBillTotal').textContent = total.toLocaleString();
+}
+
+function clearBill() { bill = []; renderBill(); renderGrid(); }
+function toggleBillPanel() { billExpanded = !billExpanded; document.getElementById('billPanel').classList.toggle('expanded', billExpanded); }
+
+// ── RECEIPT ──
+function showReceipt() {
+  if (bill.length === 0) { showToast('⚠ Pehle products add karein'); return; }
+  const now = new Date();
+  document.getElementById('receiptDate').textContent = now.toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'}) + ' · ' + now.toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('receiptItems').innerHTML = bill.map(i => `<div class="receipt-item"><span class="r-name">${i.name}</span><span class="r-qty">${i.qty}</span><span class="r-price">Rs ${(i.price*i.qty).toLocaleString()}</span></div>`).join('');
+  document.getElementById('receiptTotal').textContent = 'Rs ' + bill.reduce((s,i)=>s+i.price*i.qty,0).toLocaleString();
+  document.getElementById('receiptModal').classList.add('open');
+}
+
+function closeReceipt() { document.getElementById('receiptModal').classList.remove('open'); }
+
+function printReceipt() {
+  const content = document.getElementById('receiptContent').innerHTML;
+  const w = window.open('','_blank','width=400,height=600');
+  w.document.write(`<!DOCTYPE html><html><head><style>body{font-family:'Courier New',monospace;padding:20px;font-size:13px}.receipt-title{text-align:center;font-size:18px;font-weight:bold;margin-bottom:2px}.receipt-sub,.receipt-date,.receipt-footer{text-align:center;font-size:11px;color:#666}.receipt-divider{border:none;border-top:1px dashed #ccc;margin:8px 0}.receipt-item{display:flex;justify-content:space-between;margin-bottom:4px}.r-name{flex:1}.r-qty{width:30px;text-align:center}.r-price{width:80px;text-align:right}.receipt-items-label{display:flex;justify-content:space-between;font-size:10px;color:#999;text-transform:uppercase;margin-bottom:6px}.receipt-total{display:flex;justify-content:space-between;font-size:15px;font-weight:bold;margin-top:6px}.receipt-actions{display:none}</style></head><body>${content}</body></html>`);
+  w.document.close(); w.focus();
+  setTimeout(()=>{w.print();w.close();},500);
+}
+
+// ── MANAGE ──
+function renderManageTable() {
+  const q = document.getElementById('manageSearch').value.toLowerCase();
+  const filtered = q ? products.filter(p => p.name.toLowerCase().includes(q) || p.code.includes(q)) : products;
+  document.getElementById('manageTableBody').innerHTML = filtered.map(p => {
+    const idx = products.indexOf(p);
+    return `<div class="table-row">
+      <div class="code col-code">${p.code}</div>
+      <div class="item-name">${p.name}</div>
+      <div class="price-cell">Rs ${p.price.toLocaleString()}</div>
+      <div class="stock-cell">${p.stock}</div>
+      <div class="row-actions"><button class="edit-btn" onclick="openEditModal(${idx})">Edit</button><button class="del-btn" onclick="deleteProduct(${idx})">Del</button></div>
+    </div>`;
+  }).join('');
+}
+
+function openAddModal() {
+  editingIndex = null;
+  document.getElementById('modalTitle').textContent = 'Add New Product';
+  ['editCode','editName','editPrice','editStock'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('productModal').classList.add('open');
+}
+
+function openEditModal(idx) {
+  editingIndex = idx;
+  const p = products[idx];
+  document.getElementById('modalTitle').textContent = 'Edit Product';
+  document.getElementById('editCode').value = p.code;
+  document.getElementById('editName').value = p.name;
+  document.getElementById('editPrice').value = p.price;
+  document.getElementById('editStock').value = p.stock;
+  document.getElementById('productModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('productModal').classList.remove('open'); }
+
+async function saveProduct() {
+  const product = {
+    code: document.getElementById('editCode').value.trim(),
+    name: document.getElementById('editName').value.trim(),
+    price: parseFloat(document.getElementById('editPrice').value) || 0,
+    stock: parseInt(document.getElementById('editStock').value) || 0
+  };
+  if (!product.name) { showToast('⚠ Name zaroor enter karein'); return; }
+
+  if (editingIndex !== null) products[editingIndex] = product;
+  else products.push(product);
+
+  saveLocal(); closeModal(); renderManageTable(); renderGrid();
+  showToast('💾 Saving to Google Sheet...');
+  await syncToSheet();
+}
+
+async function deleteProduct(idx) {
+  if (!confirm(`"${products[idx].name}" delete karein?`)) return;
+  bill = bill.filter(b => b.code !== products[idx].code);
+  products.splice(idx, 1);
+  saveLocal(); renderManageTable(); renderBill(); renderGrid();
+  await syncToSheet();
+}
+
+// ── UI HELPERS ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showLoading(msg) {
+  document.getElementById('loadingText').textContent = msg;
+  document.getElementById('loadingScreen').classList.add('show');
+}
+function hideLoading() { document.getElementById('loadingScreen').classList.remove('show'); }
+
+document.getElementById('productModal').addEventListener('click', e => { if(e.target===document.getElementById('productModal')) closeModal(); });
+document.getElementById('receiptModal').addEventListener('click', e => { if(e.target===document.getElementById('receiptModal')) closeReceipt(); });
+
+// ── DEFAULT DATA ──
+const DEFAULT_PRODUCTS = [
+  {code:"230200682",name:"White Stone",price:510,stock:9},
+  {code:"230200116",name:"Aerocinia PB",price:26,stock:0},
+  {code:"231000017",name:"CONE FICUS 12\"",price:204,stock:199},
+  {code:"231000021",name:"PANDA BALL 18\"",price:1700,stock:11},
+  {code:"231000019",name:"EUFORBIA CUP",price:68,stock:965},
+  {code:"230200105",name:"Patunia PB",price:17,stock:492},
+  {code:"230900009",name:"KACHNAAR PB",price:170,stock:17},
+  {code:"251100009",name:"BANTA SINGLE HEAD BALL 18\"",price:3910,stock:0},
+  {code:"230200622",name:"Star Light Fikes 18\"",price:2295,stock:4},
+  {code:"230200577",name:"Robenia Palm 12\"",price:323,stock:23},
+  {code:"230200369",name:"I-V bail 12\"",price:1000,stock:8},
+  {code:"251000003",name:"GAMLA BALTI 12\"",price:170,stock:57},
+  {code:"260200013",name:"SURHAI",price:25500,stock:4},
+  {code:"260200034",name:"BIG ANGHOOR",price:2040,stock:6},
+  {code:"260200035",name:"CHERRY",price:850,stock:10},
+  {code:"230200671",name:"stand Hc07",price:2550,stock:0},
+  {code:"250900044",name:"MANEECHER FICUS SINGLE HEAD 24\"",price:12000,stock:3},
+  {code:"230200498",name:"Mini Plant KCH 12\"",price:600,stock:25},
+  {code:"251000019",name:"PANDA DOUBLE HEAD 24\"",price:7650,stock:5},
+  {code:"230200120",name:"Alestonia PB",price:34,stock:20},
+  {code:"230400005",name:"CHINA DOLL 18\"",price:1700,stock:35},
+  {code:"251100008",name:"GRADE FRUIT 18\"",price:2210,stock:2},
+  {code:"251000005",name:"GAMLA FISH 13\"",price:306,stock:25},
+  {code:"230200219",name:"Chandni 12\" Dwarf",price:187,stock:0},
+  {code:"230200340",name:"Golden Fikes 18\"",price:1190,stock:10},
+  {code:"230200337",name:"Gold Moor 18\"",price:2040,stock:20},
+  {code:"250900035",name:"LAJASTONIA 18\"",price:1700,stock:10},
+  {code:"251200002",name:"MERRY GOLD 8\"",price:34,stock:2367},
+  {code:"230200112",name:"Aerocaria 12\"",price:400,stock:211},
+  {code:"251000007",name:"GAMLA TOP KARACHI 24\"",price:850,stock:30},
+  {code:"250100030",name:"GAMLA SMALL PYALA",price:136,stock:2},
+  {code:"230200274",name:"DECO DRY SENIA 12\"",price:306,stock:0},
+  {code:"230200421",name:"Karonda PB",price:26,stock:363},
+  {code:"230200624",name:"Stock 8\"",price:40,stock:55},
+  {code:"230200159",name:"Aspera Grass Pyala",price:85,stock:850},
+  {code:"260200024",name:"TOPARY BANTA 18'",price:3000,stock:7},
+  {code:"251000014",name:"MOSTHERIA 18\"",price:2550,stock:7},
+  {code:"230200477",name:"Malu Laka 12\"",price:255,stock:7},
+  {code:"260200027",name:"KHUBANIBIG",price:510,stock:8},
+  {code:"230200165",name:"Banana Plant 12\"",price:425,stock:7},
+  {code:"230200634",name:"Tabubia 18\"",price:1700,stock:17},
+  {code:"230200670",name:"Spiral 24\"",price:13600,stock:2},
+  {code:"230200195",name:"Bottle Brush 12\"",price:204,stock:150},
+  {code:"260200022",name:"SPIRAL8'",price:2900,stock:8},
+  {code:"240200001",name:"AROO",price:510,stock:10},
+  {code:"250400001",name:"DASI GULLAB 10\"",price:170,stock:500},
+  {code:"260400008",name:"CHINA LEMON",price:850,stock:100},
+  {code:"250900036",name:"YUCCA 24\"",price:11050,stock:0},
+  {code:"250100017",name:"GUL E NISTAR 18\"",price:1360,stock:20},
+  {code:"230200324",name:"Foot Ball Palm 24\"",price:7062,stock:10},
+  {code:"250700009",name:"BOXES BALL LARGE",price:3740,stock:10},
+  {code:"250900034",name:"FRUITOR 18\"",price:1445,stock:2},
+  {code:"230200121",name:"Alexandra Palm 12\"",price:255,stock:30},
+  {code:"251100007",name:"TRAKE GB",price:2040,stock:20},
+  {code:"230200613",name:"Sohanjna 12\"",price:240,stock:10},
+  {code:"230200429",name:"KasanDosia 8\"",price:340,stock:0},
+  {code:"251000022",name:"VANKA JHARI 12\"",price:170,stock:0},
+  {code:"231000007",name:"GULAB 10\"",price:51,stock:106},
+  {code:"241000008",name:"SPIRAL 18\"",price:3500,stock:20},
+  {code:"260200026",name:"ANJEER TURKISH",price:510,stock:6},
+  {code:"260200025",name:"KHUBANI",price:340,stock:9},
+  {code:"251100021",name:"RUBBER PLANT BLACK 12\"",price:340,stock:6},
+  {code:"250900008",name:"YUCCA 12\"",price:170,stock:33},
+  {code:"260200017",name:"BOGAN BAIL 16",price:1700,stock:3},
+  {code:"251100005",name:"ELEPHANTA 18\"",price:3060,stock:9},
+  {code:"251000010",name:"GAMLA TOKERI 14\"",price:221,stock:71},
+  {code:"260400004",name:"BOUGANVILLEA FOOTBALL 18\" POT",price:10500,stock:10},
+  {code:"260400012",name:"BOUGANVILLEA CONE 18\" POT",price:10500,stock:10},
+  {code:"260200032",name:"APPLE",price:250,stock:10},
+  {code:"260400007",name:"GET SET YASMIN",price:42500,stock:2},
+  {code:"250900032",name:"KINO MALTA 18\"",price:1190,stock:7},
+  {code:"230300020",name:"GRILL 24\"",price:9000,stock:10},
+  {code:"230200645",name:"Topery 24\"",price:12750,stock:0},
+  {code:"230200514",name:"Mostheria 12\"",price:191,stock:15},
+  {code:"230200621",name:"Star Light Fikes 12\"",price:204,stock:50},
+  {code:"251100004",name:"YUCCA 16\" FAWARA",price:3400,stock:10},
+  {code:"230200418",name:"Kari Pata 12\"",price:221,stock:10},
+  {code:"251000029",name:"KANAIR 18\" GB",price:1190,stock:15},
+  {code:"230200164",name:"Bana Palm 12\"",price:391,stock:0},
+  {code:"250700006",name:"NEEM GROWBAG",price:1700,stock:0},
+  {code:"230200336",name:"Gold moor 12\"",price:255,stock:20},
+  {code:"241000007",name:"BANTA CONE 18\"",price:3400,stock:0},
+  {code:"230900013",name:"BOKAIN 18\"",price:1241,stock:20},
+  {code:"251000023",name:"GREAT FRUIT 24\"",price:1700,stock:0},
+  {code:"251000021",name:"CHAMBALI ROCKS 18\"",price:2040,stock:0},
+  {code:"230200135",name:"Amrood SDB",price:340,stock:0},
+  {code:"251100024",name:"ORANGE 18\" PORT",price:1020,stock:20},
+  {code:"251100025",name:"ORANGE 18\" HYBRID",price:2210,stock:2},
+  {code:"241000006",name:"DRYCENIA FAWARA",price:255,stock:4},
+  {code:"251000025",name:"AGZOVRA RED 12\"",price:238,stock:47},
+  {code:"230200342",name:"Golden Palm 12\"",price:391,stock:21},
+  {code:"230200396",name:"Jutt Rofa 12\"",price:255,stock:48},
+  {code:"260200015",name:"GROZEN GULAB",price:340,stock:22},
+  {code:"230900012",name:"FOXTAIL PALM 18\"",price:850,stock:9},
+  {code:"250300003",name:"PANDA 3 STEP 18\"",price:3570,stock:3},
+  {code:"251000006",name:"GAMLA PATEELAH 12\" & 14\"",price:425,stock:43},
+  {code:"230200343",name:"Golden Palm 18\"",price:2465,stock:17},
+  {code:"251000015",name:"PANDA 3 HEAD 24\"",price:6375,stock:1},
+  {code:"230200197",name:"Bottle Palm 12\"",price:250,stock:90},
+  {code:"260400001",name:"CONE FICUS 36\" POT",price:25500,stock:4},
+  {code:"250400002",name:"KINO MALTA 12\"",price:255,stock:0},
+  {code:"230200403",name:"Kachnaar 12\"",price:255,stock:250},
+  {code:"260200023",name:"CONE 18'",price:1700,stock:10},
+  {code:"230200525",name:"Nashpati 12\"",price:340,stock:100},
+  {code:"260200031",name:"BADAM",price:340,stock:10},
+  {code:"260400005",name:"SURAHI 24\"",price:22000,stock:5},
+  {code:"250900014",name:"PLATE SMALL",price:68,stock:0},
+  {code:"250900004",name:"ALESTONIA18\"",price:2550,stock:10},
+  {code:"230200202",name:"Budha Crazia 18\"",price:1700,stock:10},
+  {code:"230200656",name:"wall palm 18\"",price:1200,stock:10},
+  {code:"250300008",name:"CHANDNI V.C 12\"",price:238,stock:35},
+  {code:"250100019",name:"BOTTLE PALM 18\"",price:1360,stock:13},
+  {code:"250700005",name:"PILKAN GROWBAG",price:1000,stock:10},
+  {code:"231000028",name:"COPERNACIA PALM 24\"",price:8000,stock:6},
+  {code:"230200323",name:"Foot Ball Palm 18\"",price:3315,stock:0},
+  {code:"230200536",name:"Panda Ficus 24\"",price:5950,stock:0},
+  {code:"250700008",name:"ULTA ASHOK GROWBAG",price:2040,stock:0},
+  {code:"230200306",name:"Farnsisia 12\"",price:850,stock:0},
+  {code:"230200379",name:"Jakoranda 12\"",price:170,stock:0},
+  {code:"230200674",name:"Black & White Ston Bag 20kg",price:600,stock:0},
+  {code:"230200318",name:"Fonex Palm B Gaachi",price:1172,stock:0},
+  {code:"230200176",name:"Bismar kiya Palm 18\"",price:2100,stock:4},
+  {code:"230200103",name:"Neem 18\"",price:1700,stock:10},
+  {code:"251100031",name:"KALAIANDRA 12\"",price:255,stock:10},
+  {code:"260400011",name:"CHINA LEMON 12\" LHR",price:320,stock:398},
+  {code:"260400010",name:"BOTTLE PALM 16\"",price:1000,stock:19},
+  {code:"230200475",name:"Malta Kinu 12\"",price:255,stock:405},
+  {code:"230200178",name:"Black & Golden Fikes 12\"",price:200,stock:939},
+  {code:"250300002",name:"FRANCESCA",price:374,stock:14},
+  {code:"231000004",name:"CONOCARPUS CUP",price:68,stock:941},
+  {code:"260200018",name:"BHANCIA BAIL",price:340,stock:4},
+  {code:"251100002",name:"SINGONIAM 12\"",price:850,stock:19},
+  {code:"230200317",name:"Fonex Palm 24\"",price:1275,stock:2},
+  {code:"230200436",name:"Khalifa 12\"",price:202,stock:18},
+  {code:"250900043",name:"MANEECHER FICUS 18\"",price:2550,stock:0},
+  {code:"250900015",name:"PLATE BIG",price:136,stock:0},
+  {code:"230200641",name:"Terminilia Ghachi",price:3060,stock:20},
+  {code:"230200152",name:"Arjun P.B",price:43,stock:20},
+  {code:"230200411",name:"Kanghi Palm 12\"",price:661,stock:10},
+  {code:"230200610",name:"Singoniam Raad",price:2729,stock:10},
+  {code:"230200607",name:"SINGONIAM 12\" THAI",price:1360,stock:20},
+  {code:"230200649",name:"Ulta Ashokh 12\"",price:374,stock:50},
+  {code:"251100003",name:"ALEXANDRA PALM 18\"",price:3060,stock:10},
+  {code:"251100006",name:"FLOWDRON BAIL 12\"",price:340,stock:50},
+  {code:"230200458",name:"lajastonia Black",price:482,stock:10},
+  {code:"230200129",name:"Amal Tass 18\"",price:1190,stock:10},
+  {code:"251000012",name:"GAMLA GOUDHI PATEELH 14\"",price:306,stock:17},
+  {code:"230300002",name:"BOTTELE PALM 24\"",price:7650,stock:0},
+  {code:"230300001",name:"FOX TAIL PALM 24\"",price:5100,stock:0},
+  {code:"231000003",name:"KARONDA 12\"",price:221,stock:0},
+  {code:"230200215",name:"Chambelli Bail 8\"",price:85,stock:0},
+  {code:"230200585",name:"Rubber Plant 12\"",price:391,stock:0},
+  {code:"250900027",name:"CHADNI V/C 12\"",price:204,stock:0},
+  {code:"251100013",name:"THAI 3 HEAD 24\"",price:8160,stock:4},
+  {code:"251100014",name:"THAI 4 HEAD 24\"",price:8160,stock:4},
+  {code:"231000001",name:"LADY FINGR 12\"",price:250,stock:353},
+  {code:"230200236",name:"China Lemon 12\"",price:221,stock:496},
+  {code:"230200611",name:"Snake Plant 12\"",price:510,stock:1},
+  {code:"230300004",name:"FOXTIAL GACHI BIG",price:5100,stock:1},
+  {code:"251100022",name:"RUBBER PLANT GREEN 12\"",price:238,stock:5},
+  {code:"260200019",name:"PATUNIA CUP",price:40,stock:135},
+  {code:"260200016",name:"BOGAN BAIL 12",price:340,stock:11},
+  {code:"251100023",name:"AMROOD 16\"",price:306,stock:3},
+  {code:"230200211",name:"Cane Palm 18\"",price:1700,stock:9},
+  {code:"230200516",name:"Motiya 12\"",price:170,stock:381},
+  {code:"230200648",name:"Ulta Ashok 18\"",price:2210,stock:17},
+  {code:"260200021",name:"ANTURIUM",price:40,stock:90},
+  {code:"250700001",name:"GULAB 8\"",price:102,stock:0},
+  {code:"230200083",name:"Jamun 12\"",price:250,stock:150},
+  {code:"251100020",name:"GRILL 16\"",price:3060,stock:13},
+  {code:"230200347",name:"Grill 18\"",price:3740,stock:3},
+  {code:"230200125",name:"Aloo Bhukhara PB",price:250,stock:10},
+  {code:"260200028",name:"JAPANI PHAL",price:340,stock:10},
+  {code:"260200029",name:"ALUCHA",price:250,stock:10},
+  {code:"260400006",name:"CONE 24\"",price:22000,stock:6},
+  {code:"230200246",name:"Cone Ficus 18\"",price:3740,stock:20},
+  {code:"230200602",name:"Sharien PB",price:43,stock:20},
+  {code:"250700004",name:"TERMINILIA GROWBAG",price:1500,stock:20},
+  {code:"230300029",name:"TAKOMA 18\"",price:1700,stock:10},
+  {code:"240600016",name:"DRY SANIA 12\"",price:238,stock:0},
+  {code:"230200608",name:"Singoniam 18\"",price:2550,stock:10},
+  {code:"230200391",name:"Jasmine Bail 12\"",price:221,stock:10},
+  {code:"250900038",name:"CASSIA NODOSA 12\"",price:1190,stock:10},
+  {code:"230200213",name:"Carry Sola H 8\"",price:66,stock:0},
+  {code:"250100002",name:"MANITURE BALL 18\"",price:2550,stock:0},
+  {code:"251100017",name:"CHAMBELI BAIL 12\"",price:170,stock:10},
+  {code:"251100018",name:"VINKA JHARI 12\"",price:170,stock:10},
+  {code:"251100019",name:"BOTTLE PALM 24\"",price:7650,stock:3},
+  {code:"251100026",name:"PAMELO GREY 18\"",price:1700,stock:0},
+  {code:"230200113",name:"Aerocaria 18\"",price:2550,stock:98},
+  {code:"251000009",name:"GAMLA TOKERI 18\"",price:340,stock:4},
+  {code:"251000011",name:"GAMLA TOP KARACHI 18\"",price:340,stock:86},
+  {code:"230200305",name:"farcaria 18\"",price:3230,stock:8},
+  {code:"230200445",name:"korian Grass sqf",price:34,stock:0},
+  {code:"251100030",name:"CARASOLA 10\"",price:85,stock:28},
+  {code:"260200014",name:"ENGLISH GULAB",price:120,stock:152},
+  {code:"230200210",name:"Cane Palm 12\"",price:391,stock:29},
+  {code:"230200497",name:"Mini Plant 18\"",price:1360,stock:7},
+  {code:"230200143",name:"Anjeer 12\"",price:250,stock:7},
+  {code:"230200011",name:"Bonsae",price:16000,stock:13},
+  {code:"230200578",name:"Robenia Palm 18\"",price:1020,stock:1},
+  {code:"251000013",name:"GAMLA TOKERI 24\"",price:850,stock:24},
+  {code:"251100029",name:"AXOCARIA 12\"",price:170,stock:39},
+  {code:"230300011",name:"CHANDNI 12\"",price:210,stock:55},
+  {code:"260400003",name:"BOUGANVILLEA FOOTBALL 24\" POT",price:25500,stock:6},
+  {code:"250700002",name:"FLEWDEDRAN BAIL 12\"",price:340,stock:0},
+  {code:"230200626",name:"Sukh Chain 12\"",price:204,stock:150},
+  {code:"260200030",name:"AKHROAT",price:340,stock:10},
+  {code:"260200033",name:"ANGOOR",price:850,stock:12},
+  {code:"230200247",name:"Cone Ficus 24\"",price:8000,stock:5},
+  {code:"230200685",name:"Mosmi Gachi",price:0,stock:2},
+  {code:"251000020",name:"SINGLE HEAD BALL KARACHI 18\"",price:3910,stock:5},
+  {code:"251000018",name:"KING FICUS GOBAR 24\"",price:16150,stock:1},
+  {code:"230200012",name:"BOXES CONE BIG",price:8500,stock:2},
+  {code:"230200095",name:"marwa 12\"",price:221,stock:10},
+  {code:"230200059",name:"kyari 2ft Concreet",price:1700,stock:0},
+  {code:"250900029",name:"KANAIR 12\"",price:204,stock:0},
+  {code:"251100016",name:"JUTROFA GREEN 12\"",price:170,stock:10},
+  {code:"251100028",name:"FOXTAIL PALM 18\" LOCAL",price:1530,stock:10},
+  {code:"251000001",name:"GAMLA GLASS 12\"",price:323,stock:9},
+  {code:"260200036",name:"ANAR",price:250,stock:19},
+  {code:"251000026",name:"BAYEET 18\"",price:2000,stock:6},
+  {code:"230200467",name:"Lemon grass12\"",price:170,stock:9},
+  {code:"230200004",name:"Amrood Gachi",price:391,stock:5},
+  {code:"251000024",name:"AGZOVRA PINK 12\"",price:306,stock:28},
+  {code:"230200572",name:"Ratkirani 12",price:306,stock:8},
+  {code:"251000004",name:"GAMLA GOUDI 17\"",price:306,stock:48},
+  {code:"230200457",name:"Lajastonia 12\"",price:204,stock:294},
+  {code:"230900006",name:"BANTA FICUS 12\"",price:187,stock:45},
+  {code:"260400002",name:"FICUS GRILL 24\"",price:42500,stock:2},
+  {code:"230200638",name:"Terminilia 12\"",price:238,stock:100},
+  {code:"251100010",name:"CHANCYA BOGUN BAIL 18\"",price:2975,stock:10},
+  {code:"251100011",name:"YUCCA 16\"",price:3400,stock:10},
+  {code:"251100012",name:"BANTA SINGLE HEAD 24\"",price:11050,stock:5},
+  {code:"230200282",name:"Dry Senia Read 12\" vc",price:306,stock:0},
+  {code:"251000002",name:"GAMLA GLASS 24\"",price:765,stock:12},
+  {code:"230300003",name:"BOTTEL PALM 18\"",price:1700,stock:0},
+  {code:"230800002",name:"PANDA BALL 24\"",price:5950,stock:0},
+  {code:"251000016",name:"SPIRAL 3 HEAD 24\"",price:8160,stock:0},
+  {code:"251000017",name:"SPIRAL 4 HEAD 24\"",price:8160,stock:0},
+  {code:"251100015",name:"THAI BONSAI",price:7650,stock:4},
+  {code:"230200151",name:"Arjun 18\"",price:850,stock:36},
+  {code:"260400009",name:"BANTA FICUS 16\"",price:600,stock:15}
+];
+
+init();
+</script>
+</body>
+</html>
